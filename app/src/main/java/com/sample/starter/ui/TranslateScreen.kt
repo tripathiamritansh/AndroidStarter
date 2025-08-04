@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -65,8 +66,14 @@ fun TranslateScreen() {
             Topbar(scope, drawerState)
         }, bottomBar = {
             BottomBar()
-        }) { paddingValue ->
-            Content(Modifier.padding(paddingValue))
+        }) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize(),
+            ) {
+                Content()
+            }
         }
     }
 }
@@ -141,13 +148,12 @@ fun BottomBarItem(icon: androidx.compose.ui.graphics.vector.ImageVector, text: S
 }
 
 @Composable
-fun Content(modifier: Modifier) {
+fun Content() {
     var inputValue by remember { mutableStateOf("") }
-
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
+            .padding(16.dp),
     ) {
         Box(
             modifier = Modifier
@@ -169,7 +175,9 @@ fun Content(modifier: Modifier) {
             verticalArrangement = Arrangement.Center
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 32.dp, start = 16.dp, end = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Button(onClick = {
