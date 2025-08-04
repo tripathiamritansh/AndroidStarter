@@ -5,7 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.sample.feed.ui.theme.StarterTheme
-import com.sample.starter.ui.TranslateScreen
+
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
