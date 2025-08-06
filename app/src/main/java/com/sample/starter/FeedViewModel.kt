@@ -4,13 +4,20 @@ import androidx.compose.runtime.toMutableStateList
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
 
 class FeedViewModel : ViewModel() {
+    private val _checked = MutableStateFlow(false)
+    val checked = _checked.asStateFlow()
     val _posts = MutableStateFlow(generatePosts())
     val posts: StateFlow<List<Post>> = _posts
     fun shufflePost() {
         _posts.value = _posts.value.shuffled()
+    }
+
+     fun toggle() {
+        _checked.value = !_checked.value
     }
 
     fun toggleLike(post: Post, index: Int) {

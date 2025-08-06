@@ -1,6 +1,8 @@
 package com.sample.starter
 
+import android.widget.ToggleButton
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,9 +18,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardColors
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -37,6 +43,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sample.starter.ui.theme.FeedTheme
+import com.sample.starter.ui.theme.LocalFeedColors
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,57 +59,72 @@ fun FeedScreen() {
         }
     }
     val scope = rememberCoroutineScope()
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text("Social Feeb")
-                },
-                actions = {
-                    Button(
-                        onClick = {
-                            viewModel.shufflePost()
+    val isFunkyTheme by viewModel.checked.collectAsStateWithLifecycle()
+    FeedTheme(isFunkyTheme = isFunkyTheme) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text("Social Feeb")
+                    },
+                    actions = {
+                        Row {
+                            Button(
+                                onClick = {
+                                    viewModel.shufflePost()
+                                }
+                            ) { Text("Shuffle") }
+                            Checkbox(
+                                checked = isFunkyTheme,
+                                onCheckedChange = { checked ->
+                                    viewModel.toggle()
+                                }
+                            )
                         }
-                    ) { Text("Shuffle") }
-                }
-            )
-        },
-        floatingActionButton = {
-            if (derivedState.value) {
-                FloatingActionButton(
-                    onClick = {
-                        scope.launch {
-                            listState.animateScrollToItem(0)
-                        }
-                    }
-                ) {
-                    Text("Scroll to Top")
-                }
-            }
 
-        }
-    ) { padding ->
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            itemsIndexed(items = posts, key = { index, item -> item.id }) { index, post ->
-                PostItem(post, Modifier.animateItem()) {
-                    viewModel.toggleLike(post, index)
+                    }
+                )
+            },
+            floatingActionButton = {
+                if (derivedState.value) {
+                    FloatingActionButton(
+                        onClick = {
+                            scope.launch {
+                                listState.animateScrollToItem(0)
+                            }
+                        }
+                    ) {
+                        Text("Scroll to Top")
+                    }
+                }
+
+            }
+        ) { padding ->
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                itemsIndexed(items = posts, key = { index, item -> item.id }) { index, post ->
+                    PostItem(post, Modifier.animateItem()) {
+                        viewModel.toggleLike(post, index)
+                    }
                 }
             }
         }
     }
-
 }
 
 @Composable
 fun PostItem(post: Post, modifier: Modifier, onLiked: () -> Unit) {
 
-    val likedColor by animateColorAsState(if (post.isLiked) Color.Red else Color.Black)
-    Card(modifier = modifier.padding(16.dp)) {
+    val likedColor by animateColorAsState(if (post.isLiked) LocalFeedColors.current.isLikedTint else Color.Black)
+    Card(
+        modifier = modifier
+            .padding(16.dp),
+        colors = CardDefaults.cardColors(LocalFeedColors.current.cardBackgroundColor)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
