@@ -16,9 +16,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             StarterTheme {
-                //Screen Composable
+                UserProfileComposable()
             }
         }
     }
-
 }
