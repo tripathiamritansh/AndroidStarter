@@ -1,8 +1,11 @@
-package com.sample.starter.ui.theme
+package com.sample.starter.ui.chat
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import java.util.UUID
 
 class ChatViewModel : ViewModel() {
@@ -10,20 +13,27 @@ class ChatViewModel : ViewModel() {
     private val mutableState = MutableStateFlow(UiState(chatMessages))
     val uiState = mutableState.asStateFlow()
 
+    init {
+
+    }
+
     fun handUiEvents(uiEvent: UiEvent) {
         when (uiEvent) {
             is UiEvent.SendMessage -> {
                 //ideally send to repository
-                mutableState.value = mutableState.value.copy(
-                    messages = mutableState.value.messages.toMutableList().apply {
-                        add(
-                            Message(
-                                message = uiEvent.message,
-                                role = Message.Role.USER
+                viewModelScope.launch {
+                    mutableState.value = mutableState.value.copy(
+                        messages = mutableState.value.messages.toMutableList().apply {
+                            add(
+                                Message(
+                                    message = mutableState.value.textInput,
+                                    role = Message.Role.USER
+                                )
                             )
-                        )
-                    }
-                )
+                        }
+                    )
+                    stream()
+                }
             }
 
             is UiEvent.OnTextInput -> {
@@ -33,24 +43,55 @@ class ChatViewModel : ViewModel() {
             }
         }
     }
+
+    suspend fun stream() {
+        val string = "Sure! Kotlin provides a variety of collections such as lists, sets, and maps."
+
+        // Add a new AI message that will be streamed
+        val messages = mutableState.value.messages.toMutableList()
+        messages.add(Message(message = "", role = Message.Role.AI))
+
+        mutableState.value = mutableState.value.copy(messages = messages, isStreaming = true)
+
+        // Stream character by character with delays
+        var streamedMessage = ""
+        string.forEach { char ->
+            streamedMessage += char
+            val updatedMessages = mutableState.value.messages.toMutableList()
+            updatedMessages[updatedMessages.size - 1] = updatedMessages.last().copy(
+                message = streamedMessage
+            )
+            mutableState.value = mutableState.value.copy(messages = updatedMessages)
+
+            // Add delay for streaming effect
+            kotlinx.coroutines.delay(50) // 50ms delay between characters
+        }
+
+        // Mark streaming as complete
+        val finalMessages = mutableState.value.messages.toMutableList()
+        mutableState.value = mutableState.value.copy(messages = finalMessages, isStreaming = false)
+    }
 }
+
 
 sealed class UiEvent {
 
     data class OnTextInput(val message: String) : UiEvent()
-    data class SendMessage(val message: String) : UiEvent()
+    data object SendMessage : UiEvent()
 }
 
+@Immutable
 data class UiState(
     val messages: List<Message>,
     val textInput: String = "",
-    val title : String = "GPT 5"
+    val title: String = "GPT 5",
+    val isStreaming: Boolean = false
 )
 
 data class Message(
     val id: UUID = UUID.randomUUID(),
     val message: String,
-    val role: Role
+    val role: Role,
 ) {
     enum class Role {
         AI,
@@ -94,4 +135,5 @@ val chatMessages = listOf(
         message = "Yes, a set would be perfect for ensuring that all the IDs are unique.",
         role = Message.Role.AI
     )
+
 )
