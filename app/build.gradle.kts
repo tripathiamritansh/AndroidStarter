@@ -86,6 +86,16 @@ dependencies {
     implementation(libs.androidx.compose.animation)
     implementation(libs.androidx.activity.compose)
 
+    // Material Icons (if not already added)
+    // Material3
+    implementation(libs.androidx.material3)
+
+    // Material Icons (if not already added)
+    implementation(libs.androidx.material.icons.core.v160)
+
+    // Extended icons (optional, for more icons)
+    implementation(libs.androidx.material.icons.extended)
+
     // Hilt
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
