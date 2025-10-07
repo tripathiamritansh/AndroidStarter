@@ -1,6 +1,6 @@
 package com.sample.starter.di
 
-import com.sample.starter.data.api.ApiService
+import com.sample.starter.data.remote.api.ApiService
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import dagger.Module
@@ -17,7 +17,7 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    const val baseUrl = "https://jsonplaceholder.typicode.com"
+    private const val BASE_URL = "https://reqres.in/api/"
 
 
     @Provides
@@ -35,7 +35,17 @@ object NetworkModule {
             level = HttpLoggingInterceptor.Level.BODY
         }
 
+        // Add API key interceptor
+        val apiKeyInterceptor = okhttp3.Interceptor { chain ->
+            val originalRequest = chain.request()
+            val newRequest = originalRequest.newBuilder()
+                .addHeader("x-api-key", "reqres-free-v1")
+                .build()
+            chain.proceed(newRequest)
+        }
+
         return OkHttpClient.Builder()
+            .addInterceptor(apiKeyInterceptor)
             .addInterceptor(loggingInterceptor)
             .build()
     }
@@ -47,7 +57,7 @@ object NetworkModule {
         moshi: Moshi
     ): Retrofit {
         return Retrofit.Builder()
-            .baseUrl(baseUrl)
+            .baseUrl(BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()

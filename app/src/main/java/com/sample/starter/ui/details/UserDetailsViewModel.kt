@@ -5,7 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import com.sample.starter.MainActivity
-import com.sample.starter.data.User
+import com.sample.starter.data.remote.model.UserDetailsResponse
+import com.sample.starter.data.remote.model.UserResponse
+import com.sample.starter.domain.model.User
 import com.sample.starter.domain.repository.UserRepository
 import com.sample.starter.ui.details.UserDetailUiState.Success
 import dagger.hilt.android.lifecycle.HiltViewModel

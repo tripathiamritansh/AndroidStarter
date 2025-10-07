@@ -7,6 +7,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -15,20 +17,59 @@ class UserListViewModel @Inject constructor(
     private val repository: UserRepository
 ) : ViewModel() {
 
-    private val mutableState = MutableStateFlow<UserListState>(UserListState.Loading)
-    val uiState: StateFlow<UserListState> = mutableState.asStateFlow()
+    private val _uiState = MutableStateFlow<UserListState>(UserListState.Loading)
+    val uiState: StateFlow<UserListState> = _uiState.asStateFlow()
 
-    init { loadUsers() }
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
-    fun loadUsers() {
-        viewModelScope.launch {
-            repository
-                .getUsers()
-                .onSuccess {
-                    mutableState.value = UserListState.Success(it)
+    init {
+        observeUsers()
+        loadInitialPage()
+    }
+
+    private fun observeUsers() {
+        repository
+            .getUsersFlow()
+            .onEach { users ->
+                _uiState.value = if (users.isEmpty()) {
+                    UserListState.Loading
+                } else {
+                    UserListState.Success(users)
                 }
-                .onFailure {
-                    mutableState.value = UserListState.Error
+            }
+            .launchIn(viewModelScope)
+    }
+
+    private fun loadInitialPage() {
+        viewModelScope.launch {
+            repository.loadNextPage()
+                .onFailure { exception ->
+                    _uiState.value = UserListState.Error(
+                        exception.message ?: "Unknown error"
+                    )
+                }
+        }
+    }
+
+    fun loadMore() {
+        viewModelScope.launch {
+            repository.loadNextPage()
+        }
+    }
+
+    fun refresh() {
+        _isRefreshing.value = true
+        viewModelScope.launch {
+            repository.refresh()
+                .onSuccess {
+                    _isRefreshing.value = false
+                }
+                .onFailure { exception ->
+                    _uiState.value = UserListState.Error(
+                        exception.message ?: "Unknown error"
+                    )
+                    _isRefreshing.value = false
                 }
         }
     }
