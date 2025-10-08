@@ -21,6 +21,14 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        // Read API key from local.properties (not committed to git)
+        val properties = org.jetbrains.kotlin.konan.properties.Properties()
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            properties.load(localPropertiesFile.inputStream())
+        }
+        buildConfigField("String", "OPENAI_API_KEY", "\"${properties.getProperty("OPENAI_API_KEY", "")}\"")
     }
 
     buildTypes {
@@ -42,6 +50,7 @@ android {
     buildFeatures {
         viewBinding = true
         compose = true
+        buildConfig = true  // Enable BuildConfig generation
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.15"
