@@ -94,6 +94,9 @@ dependencies {
     implementation(libs.androidx.compose.runtime.livedata)
     implementation(libs.androidx.compose.animation)
     implementation(libs.androidx.activity.compose)
+    
+    // Material Icons Extended (for Send icon, etc.)
+    implementation("androidx.compose.material:material-icons-extended:1.7.5")
 
     // Hilt
     implementation(libs.hilt.android)
