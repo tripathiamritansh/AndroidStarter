@@ -1,376 +1,346 @@
 package com.sample.starter.ui.chat
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.animation.core.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sample.starter.domain.model.Message
+import com.sample.starter.domain.model.Message.Sender.*
 
 @Composable
 fun ChatScreen(
     viewModel: ChatViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    ChatContent(
-        uiState = uiState,
-        onMessageChange = viewModel::onInputTextChanged,
-        onSendMessage = viewModel::onSendMessage,
-        onRetry = viewModel::retryLastMessage,
-        onClearError = viewModel::clearError
-    )
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    Scaffold { paddingValues ->
+        ChatScreenContent(
+            state = state,
+            onTextChange = viewModel::onInputTextChanged,
+            onSendClick = viewModel::onSendMessage,
+            modifier = Modifier.padding(paddingValues)
+        )
+    }
 }
 
 @Composable
-fun ChatContent(
-    uiState: ChatUiState,
-    onMessageChange: (String) -> Unit,
-    onSendMessage: () -> Unit,
-    onRetry: () -> Unit,
-    onClearError: () -> Unit,
+fun ChatScreenContent(
+    state: ChatUiState,
+    onTextChange: (String) -> Unit,
+    onSendClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Scaffold { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            // Error banner (if error exists)
-            if (uiState.screenState is ScreenState.Error) {
-                ErrorBanner(
-                    message = uiState.screenState.message,
-                    onRetry = onRetry,
-                    onDismiss = onClearError
-                )
-            }
+    val lazyListState = rememberLazyListState()
 
-            // Messages list (always visible)
-            MessageList(
-                messages = uiState.messages,
-                modifier = Modifier.weight(1f)
-            )
+    LaunchedEffect(state.messages.size, state.isAiTyping) {
+        lazyListState.animateScrollToItem(state.messages.size)
+    }
 
-            // Input field (always visible)
-            ChatInputField(
-                inputText = uiState.inputText,
-                onInputChange = onMessageChange,
-                onSendClick = onSendMessage,
-                isEnabled = !uiState.isAiTyping
-            )
+    Column(modifier = modifier.fillMaxSize()) {
+
+        if (state.screenState is ScreenState.Error) {
+            // Show error screen
+        }
+
+        MessageList(
+            messages = state.messages,
+            lazyListState = lazyListState,
+            modifier = Modifier.weight(1f)
+        )
+
+        InputSection(
+            value = state.inputText,
+            onTextChange = onTextChange,
+            onSendClick = onSendClick
+        )
+    }
+
+
+}
+
+@Composable
+fun MessageList(
+    messages: List<Message>,
+    lazyListState: LazyListState,
+    modifier: Modifier = Modifier
+) {
+
+    LazyColumn(state = lazyListState, modifier = modifier) {
+        items(items = messages, key = { it.id }) {
+            MessageItem(message = it)
         }
     }
 }
 
 @Composable
-private fun ErrorBanner(
-    message: String,
-    onRetry: () -> Unit,
-    onDismiss: () -> Unit
+fun MessageItem(
+    message: Message
 ) {
-    Card(
+    when (message.sender) {
+        USER -> UserMessage(message.content)
+        SYSTEM -> SystemMessage(message.content, message.status == Message.Status.STREAMING)
+    }
+}
+
+
+@Composable
+fun UserMessage(content: String) {
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = message,
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer
-            )
-            TextButton(onClick = onRetry) {
-                Text("Retry")
-            }
-            IconButton(onClick = onDismiss) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Dismiss"
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun MessageList(
-    messages: List<Message>,
-    modifier: Modifier = Modifier
-) {
-    val listState = rememberLazyListState()
-    val coroutineScope = rememberCoroutineScope()
-
-    // Auto-scroll to bottom when new messages arrive
-    LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) {
-            coroutineScope.launch {
-                listState.animateScrollToItem(messages.size - 1)
-            }
-        }
-    }
-
-    LazyColumn(
-        state = listState,
-        modifier = modifier.padding(16.dp)
-    ) {
-        items(
-            items = messages,
-            key = { it.id }
-        ) { message ->
-            MessageItem(message)
-        }
-    }
-}
-
-@Composable
-private fun ChatInputField(
-    inputText: String,
-    onInputChange: (String) -> Unit,
-    onSendClick: () -> Unit,
-    isEnabled: Boolean
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .imePadding(),  // Adjusts for keyboard
-        shadowElevation = 8.dp,
-        tonalElevation = 3.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.Bottom
-        ) {
-            OutlinedTextField(
-                value = inputText,
-                onValueChange = onInputChange,
-                modifier = Modifier.weight(1f),
-                enabled = isEnabled,
-                placeholder = { Text("Type a message...") },
-                maxLines = 4,
-                shape = RoundedCornerShape(24.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            IconButton(
-                onClick = onSendClick,
-                enabled = isEnabled && inputText.isNotBlank(),
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Send,
-                    contentDescription = "Send",
-                    tint = if (isEnabled && inputText.isNotBlank()) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun MessageItem(message: Message) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-    ) {
-        when (message.sender) {
-            Message.Sender.USER -> UserMessage(message)
-            Message.Sender.SYSTEM -> SystemMessage(message)
-        }
-    }
-}
-
-@Composable
-fun UserMessage(message: Message) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.End
+        contentAlignment = Alignment.CenterEnd
     ) {
         Card(
-            modifier = Modifier
-                .widthIn(max = 280.dp)
-                .padding(start = 48.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
-            ),
+            modifier = Modifier.fillMaxWidth(.6f),
             shape = RoundedCornerShape(
                 topStart = 16.dp,
                 topEnd = 16.dp,
                 bottomStart = 16.dp,
-                bottomEnd = 4.dp
+                bottomEnd = 0.dp
             )
         ) {
-            Text(
-                text = message.content,
-                modifier = Modifier.padding(12.dp),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
+            Text(text = content, modifier = Modifier.padding(8.dp))
         }
     }
 }
 
+
 @Composable
-fun SystemMessage(message: Message) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Start
+fun SystemMessage(content: String, isTyping: Boolean = false) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+        contentAlignment = Alignment.CenterStart
     ) {
         Card(
-            modifier = Modifier
-                .widthIn(max = 280.dp)
-                .padding(end = 48.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer
-            ),
+            modifier = Modifier.fillMaxWidth(.6f),
             shape = RoundedCornerShape(
                 topStart = 16.dp,
                 topEnd = 16.dp,
-                bottomStart = 4.dp,
+                bottomStart = 0.dp,
                 bottomEnd = 16.dp
             )
         ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                Text(
-                    text = message.content.ifEmpty { "..." },
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-                
-                // Show typing indicator if streaming
-                if (message.status == Message.Status.STREAMING) {
-                    TypingIndicator()
-                }
+            if (isTyping) {
+                TypingIndicator()
+            } else {
+                Text(text = content, modifier = Modifier.padding(8.dp))
             }
         }
     }
 }
 
+
 @Composable
-private fun TypingIndicator() {
+fun TypingIndicator(
+    modifier: Modifier = Modifier
+) {
+    // This looks exactly like SystemMessage, but with animated dots instead of text
+
     Row(
-        modifier = Modifier.padding(top = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        modifier = Modifier.padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        repeat(3) { index ->
-            val infiniteTransition = rememberInfiniteTransition(label = "typing")
-            val alpha by infiniteTransition.animateFloat(
-                initialValue = 0.3f,
-                targetValue = 1f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(600, delayMillis = index * 200),
-                    repeatMode = RepeatMode.Reverse
-                ),
-                label = "dot_alpha"
+        Text(
+            text = "Thinking",
+            // Optional: add style
+            // style = MaterialTheme.typography.bodyMedium
+        )
+
+        // The animated dots!
+        AnimatedDot()
+    }
+
+}
+
+@Composable
+fun AnimatedDot() {
+    val inifiniteTransition = rememberInfiniteTransition(label = "bouncing_dots")
+    val offset1 by inifiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = -15f,
+        animationSpec = infiniteRepeatable(
+            tween(durationMillis = 500, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+    )
+    val offset2 by inifiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = -15f,
+        animationSpec = infiniteRepeatable(
+            tween(
+                durationMillis = 500,
+                delayMillis = 200,
+                easing = LinearEasing
+            ),
+            repeatMode = RepeatMode.Reverse
+        )
+    )
+
+    val offset3 by inifiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = -15f,
+        animationSpec = infiniteRepeatable(
+            tween(
+                durationMillis = 500,
+                easing = LinearEasing
+            ),
+            repeatMode = RepeatMode.Reverse
+        )
+    )
+
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .graphicsLayer {
+                    translationY = offset1
+                }
+                .background(
+                    color = Color.Gray,
+                    shape = CircleShape
+                )
+        )
+
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .graphicsLayer {
+                    translationY = offset2
+                }
+                .background(
+                    color = Color.Gray,
+                    shape = CircleShape
+                )
+        )
+
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .graphicsLayer {
+                    translationY = offset3
+                }
+                .background(
+                    color = Color.Gray,
+                    shape = CircleShape
+                )
+        )
+    }
+}
+
+@Composable
+fun InputSection(
+    value: String,
+    onTextChange: (String) -> Unit,
+    onSendClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .imePadding(),
+    ) {
+        Row(
+            modifier = Modifier.padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = onTextChange,
+                modifier = Modifier.weight(1f)
             )
-            
-            Box(
-                modifier = Modifier
-                    .size(6.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = alpha),
-                        shape = RoundedCornerShape(50)
-                    )
-            )
+            IconButton(onClick = onSendClick) {
+                Icon(imageVector = Icons.Default.Send, contentDescription = null)
+            }
         }
     }
 }
 
+
 @Preview
 @Composable
 fun PreviewContent() {
-    ChatContent(
-        uiState = ChatUiState(
+    ChatScreenContent(
+        state = ChatUiState(
             inputText = "",
             messages = listOf(
                 Message(
                     content = "Hello",
                     sender = Message.Sender.USER,
-                    createdAt = 123213L,
-                    id = "123123",
+                    createdAt = 12123213L,
+                    id = "123123f",
                     status = Message.Status.SENT
                 ),
                 Message(
                     content = "Hello",
                     sender = Message.Sender.SYSTEM,
                     createdAt = 123213L,
-                    id = "123123",
+                    id = "123123c",
                     status = Message.Status.SENT
                 ),
                 Message(
                     content = "Hello",
                     sender = Message.Sender.USER,
                     createdAt = 123213L,
-                    id = "123123",
+                    id = "123123a",
                     status = Message.Status.SENT
                 ),
                 Message(
                     content = "Hello",
                     sender = Message.Sender.SYSTEM,
                     createdAt = 123213L,
-                    id = "123123",
+                    id = "1231e23",
                     status = Message.Status.SENT
                 ),
 
                 ),
             screenState = ScreenState.Idle
         ),
-        onMessageChange = {},
-        onSendMessage = {},
-        onRetry = {},
-        onClearError = {}
+        onTextChange = {},
+        onSendClick = {}
     )
 }

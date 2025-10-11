@@ -100,6 +100,7 @@ dependencies {
 
     // Hilt
     implementation(libs.hilt.android)
+    implementation(libs.androidx.compose.animation.core)
     kapt(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
 
